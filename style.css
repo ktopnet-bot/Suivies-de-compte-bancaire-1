@@ -1,3 +1,4 @@
+[hidden]{display:none!important}
 /* Concept: a calm bank statement. Plex Mono amounts align on the right (TND in millimes, 3 decimals), one big balance on top, ultramarine accent, income/expense kept as semantic colors. */
 :root{
   --bg:#F1F3F7; --surface:#FFFFFF; --ink:#131A27; --muted:#5F6B7F; --line:#DDE2EB;
