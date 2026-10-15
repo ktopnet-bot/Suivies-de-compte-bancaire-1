@@ -1,5 +1,5 @@
-var CACHE='carnet-comptes-v4';
-var FILES=['./','index.html','style.css','app.js','manifest.json','icon-192.png','icon-512.png','icon-180.png'];
+var CACHE='carnet-comptes-v8';
+var FILES=['./','index.html','style.css','app.js','manifest.json'];
 self.addEventListener('install',function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(FILES)}));
   self.skipWaiting();
