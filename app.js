@@ -662,7 +662,7 @@ function viewRecap(){
   h+=card('Évolution du solde','Total des comptes sélectionnés, en '+esc(c.cur),'rbal');
   h+=card('Revenus et dépenses','Semaine par semaine ou mois par mois selon la période','rbars','<div class="keys">'+(c.type!=='exp'?'<span><i class="sq" style="background:var(--c1)"></i>Revenus</span>':'')+(c.type!=='inc'?'<span><i class="sq" style="background:var(--c2)"></i>Dépenses</span>':'')+'</div>');
   var Tc=rcatTotals(c),list=Tc.keys.map(function(k){var ct=catOf(k);
-    return '<div class="row" style="grid-template-columns:14px minmax(0,1fr) auto;padding:9px 0"><i style="width:10px;height:10px;border-radius:3px;background:'+ct.color+'"></i><span class="t">'+esc(ct.name)+' <span style="color:var(--muted);font:400 12.5px var(--f-mono)">'+Math.round(Tc.by[k]/Tc.tot*100)+' %</span></span><span class="amt">'+money(Tc.by[k],c.cur)+'</span></div>';
+    return '<button type="button" class="row" data-act="cat-hist" data-id="'+esc(k)+'" data-cur="'+esc(c.cur)+'" style="grid-template-columns:14px minmax(0,1fr) auto;padding:9px 0"><i style="width:10px;height:10px;border-radius:3px;background:'+ct.color+'"></i><span class="t">'+esc(ct.name)+' <span style="color:var(--muted);font:400 12.5px var(--f-mono)">'+Math.round(Tc.by[k]/Tc.tot*100)+' %</span></span><span class="amt">'+money(Tc.by[k],c.cur)+' <span style="color:var(--muted)">›</span></span></button>';
   }).join('');
   h+=card(c.kind==='exp'?'Dépenses par catégorie':'Revenus par catégorie','Répartition sur la période','rdonut',list?'<div style="margin-top:8px">'+list+'</div>':'');
   h+='<section class="card" style="margin-top:12px"><h3>Par compte</h3><p class="sub">Solde en fin de période, revenus et dépenses de chaque compte</p>'+(A.html||'<p class="sub" style="margin:0">Aucun compte dans cette devise.</p>')+'</section>';
@@ -729,7 +729,7 @@ function viewStats(){
   h+='<div class="duo"><div class="panel"><p class="eyebrow">Revenus</p><p class="v pos">'+money(tm.inc,c.cur)+'</p></div><div class="panel"><p class="eyebrow">Dépenses</p><p class="v">'+money(tm.exp,c.cur)+'</p></div></div>';
   h+='<div class="panel pad" style="margin-top:12px"><div class="meta"><span>Solde du mois</span><b style="color:'+(tm.inc-tm.exp<0?'var(--exp)':'var(--inc)')+'">'+money(tm.inc-tm.exp,c.cur,true)+'</b></div></div>';
   var T=catTotals(c),list=T.keys.map(function(k){var ct=catOf(k);
-    return '<div class="row" style="grid-template-columns:14px minmax(0,1fr) auto;padding:9px 0"><i style="width:10px;height:10px;border-radius:3px;background:'+ct.color+'"></i><span class="t">'+esc(ct.name)+' <span style="color:var(--muted);font:400 12.5px var(--f-mono)">'+Math.round(T.by[k]/T.tot*100)+' %</span></span><span class="amt">'+money(T.by[k],c.cur)+'</span></div>';
+    return '<button type="button" class="row" data-act="cat-hist" data-id="'+esc(k)+'" data-cur="'+esc(c.cur)+'" style="grid-template-columns:14px minmax(0,1fr) auto;padding:9px 0"><i style="width:10px;height:10px;border-radius:3px;background:'+ct.color+'"></i><span class="t">'+esc(ct.name)+' <span style="color:var(--muted);font:400 12.5px var(--f-mono)">'+Math.round(T.by[k]/T.tot*100)+' %</span></span><span class="amt">'+money(T.by[k],c.cur)+' <span style="color:var(--muted)">›</span></span></button>';
   }).join('');
   h+=card('Répartition par catégorie',exp?'Où part l’argent ce mois-ci':'D’où vient l’argent ce mois-ci','donut',list?'<div style="margin-top:8px">'+list+'</div>':'');
   h+=card(exp?'Dépenses jour par jour':'Revenus jour par jour','Un trait par jour du mois, le plus haut est annoté','daily');
@@ -767,6 +767,33 @@ function openSheet(html){
 }
 var reopen=null;
 function closeSheet(final){var rp=reopen;reopen=null;$('#scrim').hidden=true;$('#sheet').onclick=null;$('#sheet').onkeydown=null;$('#sheet').oninput=null;$('#sheet').innerHTML='';if(lastFocus&&lastFocus.focus)try{lastFocus.focus()}catch(e){}if(rp&&final!==true)rp()}
+function catHistSheet(k,cur){
+  var ct=catOf(k),ids={};state.accounts.forEach(function(a){if(a.cur===cur)ids[a.id]=a});
+  var L=sorted(state.tx.filter(function(x){return x.type!=='tr'&&ids[x.acc]&&(LEGACY[x.cat]||x.cat)===k}));
+  var sign=function(x){return x.type==='inc'?x.amt:-x.amt};
+  var tot=0,byM={},keys=[];
+  L.forEach(function(x){tot+=sign(x);var m=x.date.slice(0,7);if(!byM[m]){byM[m]={n:0,t:0,items:[]};keys.push(m)}byM[m].n++;byM[m].t+=sign(x);byM[m].items.push(x)});
+  var h='<h2><span style="display:inline-block;width:12px;height:12px;border-radius:4px;background:'+ct.color+';margin-right:8px"></span>'+esc(ct.name)+'</h2>';
+  if(!L.length){openSheet(h+'<p style="color:var(--muted)">Aucune opération dans cette catégorie en '+esc(cur)+'.</p><div class="actions"><button type="button" class="btn" data-act="close">Fermer</button></div>');return}
+  var avg=Math.round(Math.abs(tot)/keys.length);
+  h+='<div class="ch-sum"><div><span class="eyebrow">Total</span><b>'+money(tot,cur)+'</b></div><div><span class="eyebrow">Opérations</span><b>'+L.length+'</b></div><div><span class="eyebrow">Moy. / mois</span><b>'+money(avg,cur)+'</b></div></div>';
+  var months=[],m=todayIso().slice(0,7),i;
+  for(i=0;i<12;i++){months.unshift(m);m=addMonths(m,-1)}
+  var first=keys[keys.length-1];
+  months=months.filter(function(x){return x>=first});
+  if(months.length<2)months=[addMonths(todayIso().slice(0,7),-1),todayIso().slice(0,7)];
+  var mx=1;months.forEach(function(x){if(byM[x])mx=Math.max(mx,Math.abs(byM[x].t))});
+  h+='<p class="eyebrow">Mois par mois</p><div class="ch-bars">'+months.map(function(x){var v=byM[x]?Math.abs(byM[x].t):0;return '<div title="'+esc(monthLabel(x)+' : '+money(byM[x]?byM[x].t:0,cur))+'"><i style="height:'+Math.round(v/mx*88)+'px;background:'+(v?ct.color:'var(--track)')+'"></i></div>'}).join('')+'</div><div class="ch-lab">'+months.map(function(x){return '<span>'+esc(monthLabel(x,true).replace('.',''))+'</span>'}).join('')+'</div>';
+  h+='<p class="eyebrow" style="margin-top:16px">Historique</p>';
+  keys.forEach(function(mk){var g=byM[mk];
+    h+='<div class="ch-m"><span>'+esc(monthLabel(mk))+' · '+g.n+'</span><b>'+money(g.t,cur,true)+'</b></div>';
+    g.items.forEach(function(x){var a=ids[x.acc],d=parseD(x.date);
+      h+='<div class="ch-r"><span class="d">'+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'</span><span style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.note||ct.name)+'</div><div style="font-size:13px;color:var(--muted)">'+esc(a.name)+'</div></span><span style="font-family:var(--f-mono);color:'+(x.type==='inc'?'var(--inc)':'var(--ink)')+'">'+money(sign(x),cur,true)+'</span></div>'});
+  });
+  h+='<div class="actions" style="margin-top:14px"><button type="button" class="btn primary" data-act="close">Fermer</button></div>';
+  openSheet(h);
+}
+
 var toastT;
 function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2600)}
 
@@ -1122,6 +1149,7 @@ document.addEventListener('click',function(e){
   else if(act==='import')importSheet();
   else if(act==='cats')catSheet();
   else if(act==='accounts')accountsSheet();
+  else if(act==='cat-hist')catHistSheet(id,el.dataset.cur||homeCur());
   else if(act==='rf-period')pickPeriod();
   else if(act==='rf-accs')pickAccs();
   else if(act==='rf-cats')pickCats();
